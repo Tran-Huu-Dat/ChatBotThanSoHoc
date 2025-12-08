@@ -169,7 +169,7 @@ export default function Home() {
     {
       id: 1,
       role: "bot",
-      text: "Xin chào! Mình là trợ lý thần số học. Hãy cho mình biết ngày sinh hoặc câu hỏi của bạn 💫",
+      text: "Xin chào! Mình là trợ lý thần số học. Hãy cho mình biết họ tên - ngày sinh hoặc câu hỏi của bạn 💫",
     },
   ]);
   const [input, setInput] = useState("");
