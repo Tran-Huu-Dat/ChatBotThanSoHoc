@@ -15,7 +15,7 @@ type Message = {
 const floatingGlyphs = [
   {
     id: 1,
-    char: "1",
+    char: "9",
     top: "10%",
     left: "15%",
     size: "text-3xl",
@@ -24,7 +24,7 @@ const floatingGlyphs = [
   },
   {
     id: 2,
-    char: "7",
+    char: "3",
     top: "18%",
     left: "70%",
     size: "text-4xl",
@@ -33,7 +33,7 @@ const floatingGlyphs = [
   },
   {
     id: 3,
-    char: "9",
+    char: "6",
     top: "32%",
     left: "30%",
     size: "text-2xl",
@@ -169,10 +169,12 @@ export default function Home() {
     {
       id: 1,
       role: "bot",
-      text: "Xin chào! Mình là trợ lý thần số học. Hãy cho mình biết họ tên - ngày sinh hoặc câu hỏi của bạn 💫",
+      text: "Xin chào! Mình là trợ lý thần số học. Hãy cho mình biết họ tên - ngày sinh hoặc câu hỏi của bạn nhé!",
     },
   ]);
   const [input, setInput] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [showChat, setShowChat] = useState(false);
 
@@ -191,6 +193,40 @@ export default function Home() {
     x: mouseOffset.x * strength,
     y: mouseOffset.y * strength,
   });
+  const normalizeBirthDate = (raw: string) => {
+    const m = raw.trim().match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})\b/);
+    if (!m) return "";
+    const dd = m[1].padStart(2, "0");
+    const mm = m[2].padStart(2, "0");
+    const yyyy = m[3];
+    return `${dd}/${mm}/${yyyy}`;
+  };
+  const dateInputToDDMMYYYY = (iso: string) => {
+    // iso: "YYYY-MM-DD"
+    const m = iso.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    const yyyy = m[1];
+    const mm = m[2];
+    const dd = m[3];
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  const inferProfileFromText = (text: string) => {
+    const inferredBirthDate = normalizeBirthDate(text);
+
+    let inferredFullName = "";
+    const nameFromLabel =
+      text.match(/(?:họ\s*tên|tên)\s*[:\-]?\s*([^\n\r\d]{2,80})/i)?.[1] ?? "";
+    const nameFromIntro =
+      text.match(/(?:tôi\s*là|mình\s*là)\s+([^\n\r\d]{2,80})/i)?.[1] ?? "";
+
+    inferredFullName = (nameFromLabel || nameFromIntro).trim();
+    inferredFullName = inferredFullName
+      .replace(/ngày\s*sinh[\s:\-]*.*$/i, "")
+      .trim();
+
+    return { inferredFullName, inferredBirthDate };
+  };
 
   const handleSend = async (e: FormEvent) => {
     e.preventDefault();
@@ -209,10 +245,29 @@ export default function Home() {
     setIsThinking(true);
 
     try {
+      const { inferredFullName, inferredBirthDate } = inferProfileFromText(
+        userMessage.text
+      );
+
+      const effectiveFullName = fullName.trim() || inferredFullName;
+      const effectiveBirthDate =
+        (birthDate.trim() ? dateInputToDDMMYYYY(birthDate) : "") ||
+        inferredBirthDate;
+
+      // auto fill nếu user để trống 2 ô nhưng có viết trong câu hỏi
+      if (!fullName.trim() && inferredFullName) setFullName(inferredFullName);
+
+      const payload: Record<string, unknown> = { messages: newMessages };
+
+      if (effectiveFullName && effectiveBirthDate) {
+        payload.fullName = effectiveFullName;
+        payload.birthDate = effectiveBirthDate;
+      }
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -413,7 +468,8 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.5 }}
               >
-                Hãy thử khám phá bản thân qua lăng kính Thần Số Học cùng AI ✨
+                Hãy thử khám phá bản thân qua lăng kính Thần Số Học cùng AI
+                thông minh!
               </motion.p>
 
               <motion.button
@@ -436,7 +492,7 @@ export default function Home() {
               className="w-full max-w-3xl"
             >
               <motion.div
-                className="bg-slate-900/70 border border-slate-700/70 rounded-3xl shadow-2xl backdrop-blur-xl px-4 py-5 sm:px-6 sm:py-7 flex flex-col gap-4 h-[75vh]"
+                className="bg-slate-900/70 border border-slate-700/70 rounded-3xl shadow-2xl backdrop-blur-xl px-4 py-5 sm:px-6 sm:py-7 flex flex-col gap-3 h-[82vh]"
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4 }}
@@ -573,26 +629,44 @@ export default function Home() {
                 </div>
 
                 {/* Input */}
-                <form
-                  onSubmit={handleSend}
-                  className="mt-2 flex items-center gap-2"
-                >
-                  <div className="flex-1 relative">
+                <div className="mt-auto">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
-                      className="w-full rounded-2xl bg-slate-900/80 border border-slate-700/80 px-4 py-2.5 text-sm sm:text-base outline-none focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/40 transition-all"
-                      placeholder='Nhập câu hỏi: VD: "Ngày sinh 12/09/1995 nói lên điều gì?"'
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
+                      className="w-full rounded-2xl bg-slate-900/50 border border-slate-800/70 px-4 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                      placeholder="Nhập họ và tên"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      autoComplete="name"
+                    />
+                    <input
+                      className="w-full rounded-2xl bg-slate-900/50 border border-slate-800/70 px-4 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                      autoComplete="bday"
                     />
                   </div>
-                  <motion.button
-                    type="submit"
-                    whileTap={{ scale: 0.95 }}
-                    className="inline-flex items-center justify-center rounded-2xl px-4 py-2.5 bg-gradient-to-tr from-sky-500 to-fuchsia-500 text-sm sm:text-base font-medium shadow-lg shadow-sky-500/30 hover:shadow-fuchsia-500/30 transition-all border border-white/10"
+                  <form
+                    onSubmit={handleSend}
+                    className="mt-2 flex items-center gap-2"
                   >
-                    Gửi
-                  </motion.button>
-                </form>
+                    <div className="flex-1 relative">
+                      <input
+                        className="w-full rounded-2xl bg-slate-900/80 border border-slate-700/80 px-4 py-2.5 text-sm sm:text-base outline-none focus:border-sky-400/70 focus:ring-2 focus:ring-sky-500/40 transition-all"
+                        placeholder="Nhập câu hỏi của bạn?"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                      />
+                    </div>
+                    <motion.button
+                      type="submit"
+                      whileTap={{ scale: 0.95 }}
+                      className="inline-flex items-center justify-center rounded-2xl px-4 py-2.5 bg-gradient-to-tr from-sky-500 to-fuchsia-500 text-sm sm:text-base font-medium shadow-lg shadow-sky-500/30 hover:shadow-fuchsia-500/30 transition-all border border-white/10"
+                    >
+                      Gửi
+                    </motion.button>
+                  </form>
+                </div>
               </motion.div>
             </motion.section>
           )}

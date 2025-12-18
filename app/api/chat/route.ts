@@ -7,14 +7,11 @@ export const runtime = "nodejs";
 const apiKey = process.env.GEMINI_API_KEY;
 
 if (!apiKey) {
-  // Bạn nên set GEMINI_API_KEY trong .env.local
   throw new Error("Missing GEMINI_API_KEY in environment variables");
 }
 
 const ai = new GoogleGenAI({
   apiKey,
-  // Bạn có thể chỉ định apiVersion nếu muốn:
-  // apiVersion: "v1",
 });
 
 const MODEL_NAME = "gemini-2.5-flash";
@@ -25,7 +22,6 @@ type ClientMessage = {
   text: string;
 };
 
-// Prompt hệ thống: mô tả vai trò + format + cách xử lý hội thoại nhiều lượt
 const systemPrompt = `
 Bạn là CHUYÊN GIA THẦN SỐ HỌC (Numerology) trả lời bằng TIẾNG VIỆT.
 
@@ -81,7 +77,6 @@ NẾU KHÔNG CÓ ĐỦ THÔNG TIN:
 - Nếu không có ngày sinh/họ tên nhưng người dùng yêu cầu phân tích cá nhân, hãy giải thích chung, và nhẹ nhàng gợi ý họ cung cấp thêm thông tin trong phần [5] GỢI Ý ỨNG DỤNG.
 `;
 
-// Hàm build phần text từ hồ sơ thần số học (nếu có)
 function buildProfileText(birthDate?: string, fullName?: string) {
   if (!birthDate || !fullName) return "";
 
@@ -164,7 +159,6 @@ Hãy trả lời cho CÂU HỎI CUỐI CÙNG của người dùng, tuân thủ �
       ],
     });
 
-    // SDK trả về field .text (theo tài liệu Google Gen AI SDK)
     const replyText =
       (response as any).text ??
       "Xin lỗi, hiện tại mình chưa trả lời được. Bạn thử lại sau nhé.";
